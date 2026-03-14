@@ -3,28 +3,33 @@ import time
 
 class Progress:
 
-    def __init__(self, total_samples, sample_rate=48000, update_interval=0.2):
-        self.total_samples = total_samples
-        self.sample_rate = sample_rate
-        self.update_interval = update_interval
+    def __init__(
+        self,
+        total_samples: int,
+        sample_rate: int = 48000,
+        update_interval: float = 0.2
+    ) -> None:
+        self.total_samples: int = total_samples
+        self.sample_rate: int = sample_rate
+        self.update_interval: float = update_interval
 
-        self.start_time = time.time()
-        self.last_update = self.start_time
+        self.start_time: float = time.time()
+        self.last_update: float = self.start_time
 
-    def update(self, processed_samples):
+    def update(self, processed_samples: int) -> None:
 
-        now = time.time()
+        now: float = time.time()
 
         if now - self.last_update < self.update_interval:
             return
 
-        elapsed = now - self.start_time
+        elapsed: float = now - self.start_time
 
-        percent = (processed_samples / self.total_samples) * 100
+        percent: float = (processed_samples / self.total_samples) * 100
 
-        audio_seconds = processed_samples / self.sample_rate
+        audio_seconds: float = processed_samples / self.sample_rate
 
-        speed = audio_seconds / elapsed if elapsed > 0 else 0.0
+        speed: float = audio_seconds / elapsed if elapsed > 0 else 0.0
 
         print(
             f"{percent:6.2f}% | {elapsed:6.2f}s | {speed:5.2f}x",
@@ -34,11 +39,11 @@ class Progress:
 
         self.last_update = now
 
-    def finish(self):
+    def finish(self) -> None:
 
-        elapsed = time.time() - self.start_time
-        audio_seconds = self.total_samples / self.sample_rate
-        speed = audio_seconds / elapsed if elapsed > 0 else 0.0
+        elapsed: float = time.time() - self.start_time
+        audio_seconds: float = self.total_samples / self.sample_rate
+        speed: float = audio_seconds / elapsed if elapsed > 0 else 0.0
 
         print(
             f"100.00% | {elapsed:6.2f}s | {speed:5.2f}x"

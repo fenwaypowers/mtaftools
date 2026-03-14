@@ -1,11 +1,12 @@
 import argparse
 from pathlib import Path
+from typing import Optional
 
 from .encoder import encode_wav_to_mtaf
 from .decoder import decode_mtaf_to_wav
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mtaftools",
         description="Encode/decode MTAF audio"
@@ -25,20 +26,21 @@ def build_parser():
     return parser
 
 
-def main():
-    parser = build_parser()
-    args = parser.parse_args()
+def main() -> None:
+    parser: argparse.ArgumentParser = build_parser()
+    args: argparse.Namespace = parser.parse_args()
 
-    input_path = Path(args.input)
+    input_path: Path = Path(args.input)
 
     if not input_path.exists():
         parser.error(f"File not found: {input_path}")
 
-    ext = input_path.suffix.lower()
+    ext: str = input_path.suffix.lower()
 
     # WAV -> MTAF
     if ext == ".wav":
 
+        output: Path
         if args.output:
             output = Path(args.output)
         else:
@@ -51,6 +53,7 @@ def main():
     # MTAF -> WAV
     elif ext == ".mtaf":
 
+        output: Path
         if args.output:
             output = Path(args.output)
         else:

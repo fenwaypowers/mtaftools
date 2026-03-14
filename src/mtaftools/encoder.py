@@ -1,7 +1,9 @@
 import struct
 import wave
 from pathlib import Path
+from typing import List, Tuple
 
+from .types import PathType
 from .tables import STEP_SIZES, NEXT_STEP
 from .frame import FRAME_SIZE, FRAME_SAMPLES
 from .header import HEADER_SIZE, HEADER_NAME
@@ -10,11 +12,11 @@ from .progress import Progress
 from .wavcheck import validate_wav_for_mtaf
 
 
-def pack_nibbles(nibbles):
+def pack_nibbles(nibbles: List[int]) -> bytearray:
 
     out = bytearray(len(nibbles) // 2)
 
-    j = 0
+    j: int = 0
     for i in range(0, len(nibbles), 2):
         out[j] = nibbles[i] | (nibbles[i + 1] << 4)
         j += 1
@@ -22,26 +24,31 @@ def pack_nibbles(nibbles):
     return out
 
 
-def encode_channel_frame(samples, hist, step, step_sizes):
+def encode_channel_frame(
+    samples: List[int],
+    hist: int,
+    step: int,
+    step_sizes: List[List[int]],
+) -> Tuple[List[int], int, int]:
 
-    nibbles = [0] * FRAME_SAMPLES
+    nibbles: List[int] = [0] * FRAME_SAMPLES
 
     for i in range(FRAME_SAMPLES):
 
-        sample = samples[i]
-        sizes = step_sizes[step]
+        sample: int = samples[i]
+        sizes: List[int] = step_sizes[step]
 
-        best_n = 0
-        best_err = 1 << 60
-        best_hist = hist
+        best_n: int = 0
+        best_err: int = 1 << 60
+        best_hist: int = hist
 
-        start = 0 if sample >= hist else 8
-        end = start + 8
+        start: int = 0 if sample >= hist else 8
+        end: int = start + 8
 
         for n in range(start, end):
 
-            pred = clamp16(hist + sizes[n])
-            err = abs(sample - pred)
+            pred: int = clamp16(hist + sizes[n])
+            err: int = abs(sample - pred)
 
             if err < best_err:
                 best_err = err
@@ -56,7 +63,7 @@ def encode_channel_frame(samples, hist, step, step_sizes):
     return nibbles, hist, step
 
 
-def encode_wav_to_mtaf(input_path, output_path):
+def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
 
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -65,23 +72,23 @@ def encode_wav_to_mtaf(input_path, output_path):
 
     w = wave.open(str(input_path), "rb")
 
-    total_samples = w.getnframes()
+    total_samples: int = w.getnframes()
 
     pcm = struct.unpack(
         "<" + str(total_samples * 2) + "h",
         w.readframes(total_samples),
     )
 
-    left = list(pcm[0::2])
-    right = list(pcm[1::2])
+    left: List[int] = list(pcm[0::2])
+    right: List[int] = list(pcm[1::2])
 
-    frames = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
+    frames: int = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
     progress = Progress(total_samples)
 
     with open(output_path, "wb") as f:
 
-        header = bytearray(HEADER_SIZE)
+        header: bytearray = bytearray(HEADER_SIZE)
         header[0:4] = HEADER_NAME
 
         struct.pack_into("<I", header, 0x40, 0x44414548)
@@ -91,19 +98,19 @@ def encode_wav_to_mtaf(input_path, output_path):
 
         f.write(header)
 
-        hist_l = 0
-        hist_r = 0
-        step_l = 0
-        step_r = 0
+        hist_l: int = 0
+        hist_r: int = 0
+        step_l: int = 0
+        step_r: int = 0
 
-        pos = 0
+        pos: int = 0
 
-        step_sizes = STEP_SIZES
+        step_sizes: List[List[int]] = STEP_SIZES
 
         for frame_index in range(frames):
 
-            l = left[pos:pos + FRAME_SAMPLES]
-            r = right[pos:pos + FRAME_SAMPLES]
+            l: List[int] = left[pos:pos + FRAME_SAMPLES]
+            r: List[int] = right[pos:pos + FRAME_SAMPLES]
 
             pos += FRAME_SAMPLES
 
@@ -111,7 +118,7 @@ def encode_wav_to_mtaf(input_path, output_path):
                 l += [0] * (FRAME_SAMPLES - len(l))
                 r += [0] * (FRAME_SAMPLES - len(r))
 
-            framebuf = bytearray(FRAME_SIZE)
+            framebuf: bytearray = bytearray(FRAME_SIZE)
 
             struct.pack_into("<h", framebuf, 4, step_l)
             struct.pack_into("<h", framebuf, 6, step_r)
@@ -132,7 +139,11 @@ def encode_wav_to_mtaf(input_path, output_path):
 
             f.write(framebuf)
 
-            processed_samples = min((frame_index + 1) * FRAME_SAMPLES, total_samples)
+            processed_samples: int = min(
+                (frame_index + 1) * FRAME_SAMPLES,
+                total_samples
+            )
+
             progress.update(processed_samples)
 
     progress.finish()

@@ -1,12 +1,22 @@
 import wave
 from pathlib import Path
+from typing import TypedDict, List
+
+from .types import PathType
 
 
 class WavFormatError(Exception):
     pass
 
 
-def describe_wav(path):
+class WavInfo(TypedDict):
+    channels: int
+    samplerate: int
+    bitdepth: int
+    frames: int
+
+
+def describe_wav(path: PathType) -> WavInfo:
     """
     Return basic WAV format information.
     """
@@ -20,15 +30,15 @@ def describe_wav(path):
         }
 
 
-def validate_wav_for_mtaf(path):
+def validate_wav_for_mtaf(path: PathType) -> WavInfo:
     """
     Ensure the WAV file is compatible with the MTAF encoder.
     """
 
     path = Path(path)
-    info = describe_wav(path)
+    info: WavInfo = describe_wav(path)
 
-    errors = []
+    errors: List[str] = []
 
     if info["samplerate"] != 48000:
         errors.append("sample rate must be 48000 Hz")
@@ -45,9 +55,9 @@ def validate_wav_for_mtaf(path):
     return info
 
 
-def format_error_message(path, info, errors):
+def format_error_message(path: PathType, info: WavInfo, errors: List[str]) -> str:
 
-    msg = []
+    msg: List[str] = []
     msg.append("Invalid WAV format detected.\n")
 
     msg.append(f"Input file: {path}")

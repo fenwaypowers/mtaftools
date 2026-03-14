@@ -1,30 +1,38 @@
 import struct
 import wave
 from pathlib import Path
+from typing import List, Tuple
 
+from .types import PathType
 from .tables import STEP_SIZES, STEP_INDEXES
 from .frame import FRAME_SIZE, FRAME_SAMPLES
 from .header import HEADER_SIZE, HEADER_NAME
 from .utils import clamp16
+from .progress import Progress
 
 
-def decode_frame_channel(frame, ch, hist, step_index):
+def decode_frame_channel(
+    frame: bytes,
+    ch: int,
+    hist: int,
+    step_index: int,
+) -> Tuple[List[int], int, int]:
     """
     Decode one channel of a frame.
     """
 
-    samples = []
+    samples: List[int] = []
 
-    nibble_data = frame[0x10 + 0x80 * ch : 0x10 + 0x80 * (ch + 1)]
+    nibble_data: bytes = frame[0x10 + 0x80 * ch : 0x10 + 0x80 * (ch + 1)]
 
     for i in range(FRAME_SAMPLES):
 
-        nibbles = nibble_data[i // 2]
+        nibbles: int = nibble_data[i // 2]
 
         if i & 1:
-            nibble = (nibbles >> 4) & 0xF
+            nibble: int = (nibbles >> 4) & 0xF
         else:
-            nibble = nibbles & 0xF
+            nibble: int = nibbles & 0xF
 
         hist = clamp16(hist + STEP_SIZES[step_index][nibble])
 
@@ -40,33 +48,35 @@ def decode_frame_channel(frame, ch, hist, step_index):
     return samples, hist, step_index
 
 
-def decode_mtaf_to_wav(input_path, output_path):
+def decode_mtaf_to_wav(input_path: PathType, output_path: PathType) -> None:
 
     input_path = Path(input_path)
     output_path = Path(output_path)
 
     with open(input_path, "rb") as f:
 
-        header = f.read(HEADER_SIZE)
+        header: bytes = f.read(HEADER_SIZE)
 
         if header[0:4] != HEADER_NAME:
             raise ValueError("Not an MTAF file")
 
-        total_samples = struct.unpack_from("<I", header, 0x5C)[0]
+        total_samples: int = struct.unpack_from("<I", header, 0x5C)[0]
 
-        frames = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
+        frames: int = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
-        left_out = []
-        right_out = []
+        progress = Progress(total_samples)
 
-        hist_l = 0
-        hist_r = 0
-        step_l = 0
-        step_r = 0
+        left_out: List[int] = []
+        right_out: List[int] = []
 
-        for _ in range(frames):
+        hist_l: int = 0
+        hist_r: int = 0
+        step_l: int = 0
+        step_r: int = 0
 
-            frame = f.read(FRAME_SIZE)
+        for frame_index in range(frames):
+
+            frame: bytes = f.read(FRAME_SIZE)
 
             if len(frame) < FRAME_SIZE:
                 break
@@ -94,17 +104,29 @@ def decode_mtaf_to_wav(input_path, output_path):
             left_out.extend(l)
             right_out.extend(r)
 
+            processed_samples: int = min(
+                (frame_index + 1) * FRAME_SAMPLES,
+                total_samples
+            )
+
+            progress.update(processed_samples)
+
+        progress.finish()
+
         # trim padding
         left_out = left_out[:total_samples]
         right_out = right_out[:total_samples]
 
-        interleaved = []
+        interleaved: List[int] = []
 
         for l, r in zip(left_out, right_out):
             interleaved.append(l)
             interleaved.append(r)
 
-        pcm = struct.pack("<" + str(len(interleaved)) + "h", *interleaved)
+        pcm: bytes = struct.pack(
+            "<" + str(len(interleaved)) + "h",
+            *interleaved
+        )
 
     with wave.open(str(output_path), "wb") as w:
 

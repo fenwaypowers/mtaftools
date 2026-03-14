@@ -7,6 +7,7 @@ from .frame import FRAME_SIZE, FRAME_SAMPLES
 from .header import HEADER_SIZE, HEADER_NAME
 from .utils import clamp16
 from .progress import Progress
+from .wavcheck import validate_wav_for_mtaf
 
 
 def pack_nibbles(nibbles):
@@ -60,16 +61,9 @@ def encode_wav_to_mtaf(input_path, output_path):
     input_path = Path(input_path)
     output_path = Path(output_path)
 
+    validate_wav_for_mtaf(input_path)
+
     w = wave.open(str(input_path), "rb")
-
-    if w.getnchannels() != 2:
-        raise ValueError("MTAF encoder supports 2 channel layout only")
-
-    if w.getframerate() != 48000:
-        raise ValueError("MTAF requires 48kHz input")
-
-    if w.getsampwidth() != 2:
-        raise ValueError("MTAF requires 16-bit PCM")
 
     total_samples = w.getnframes()
 

@@ -122,68 +122,16 @@ def encode_wav_to_mtaf(input_path, output_path):
             struct.pack_into("<h", framebuf, 8, hist_l)
             struct.pack_into("<h", framebuf, 12, hist_r)
 
-            ln = [0] * FRAME_SAMPLES
-            rn = [0] * FRAME_SAMPLES
+            ln, hist_l, step_l = encode_channel_frame(
+                l, hist_l, step_l, step_sizes
+            )
 
-            for i in range(FRAME_SAMPLES):
-
-                # LEFT CHANNEL
-                sample = l[i]
-                sizes = step_sizes[step_l]
-
-                best_n = 0
-                best_err = 1 << 60
-                best_hist = hist_l
-
-                start = 0 if sample >= hist_l else 8
-                end = start + 8
-
-                for n in range(start, end):
-
-                    pred = hist_l + sizes[n]
-                    pred = clamp16(pred)
-
-                    err = abs(sample - pred)
-
-                    if err < best_err:
-                        best_err = err
-                        best_n = n
-                        best_hist = pred
-
-                hist_l = best_hist
-                step_l = NEXT_STEP[step_l][best_n]
-
-                ln[i] = best_n
-
-                # RIGHT CHANNEL
-                sample = r[i]
-                sizes = step_sizes[step_r]
-
-                best_n = 0
-                best_err = 1 << 60
-                best_hist = hist_r
-
-                start = 0 if sample >= hist_r else 8
-                end = start + 8
-
-                for n in range(start, end):
-
-                    pred = hist_r + sizes[n]
-                    pred = clamp16(pred)
-
-                    err = abs(sample - pred)
-
-                    if err < best_err:
-                        best_err = err
-                        best_n = n
-                        best_hist = pred
-
-                hist_r = best_hist
-                step_r = NEXT_STEP[step_r][best_n]
-
-                rn[i] = best_n
+            rn, hist_r, step_r = encode_channel_frame(
+                r, hist_r, step_r, step_sizes
+            )
 
             framebuf[0x10:0x90] = pack_nibbles(ln)
             framebuf[0x90:0x110] = pack_nibbles(rn)
 
             f.write(framebuf)
+

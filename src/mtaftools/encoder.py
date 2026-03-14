@@ -6,6 +6,7 @@ from .tables import STEP_SIZES, NEXT_STEP
 from .frame import FRAME_SIZE, FRAME_SAMPLES
 from .header import HEADER_SIZE, HEADER_NAME
 from .utils import clamp16
+from .progress import Progress
 
 
 def pack_nibbles(nibbles):
@@ -82,6 +83,8 @@ def encode_wav_to_mtaf(input_path, output_path):
 
     frames = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
+    progress = Progress(total_samples)
+
     with open(output_path, "wb") as f:
 
         header = bytearray(HEADER_SIZE)
@@ -103,7 +106,7 @@ def encode_wav_to_mtaf(input_path, output_path):
 
         step_sizes = STEP_SIZES
 
-        for _ in range(frames):
+        for frame_index in range(frames):
 
             l = left[pos:pos + FRAME_SAMPLES]
             r = right[pos:pos + FRAME_SAMPLES]
@@ -134,3 +137,8 @@ def encode_wav_to_mtaf(input_path, output_path):
             framebuf[0x90:0x110] = pack_nibbles(rn)
 
             f.write(framebuf)
+
+            processed_samples = min((frame_index + 1) * FRAME_SAMPLES, total_samples)
+            progress.update(processed_samples)
+
+    progress.finish()

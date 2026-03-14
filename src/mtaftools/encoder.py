@@ -134,4 +134,3 @@ def encode_wav_to_mtaf(input_path, output_path):
             framebuf[0x90:0x110] = pack_nibbles(rn)
 
             f.write(framebuf)
-

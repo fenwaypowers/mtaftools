@@ -1,9 +1,11 @@
-STEP_INDEXES = [
+from typing import List
+
+STEP_INDEXES: List[int] = [
     -1,-1,-1,-1,2,4,6,8,
     -1,-1,-1,-1,2,4,6,8
 ]
 
-STEP_SIZES = [
+STEP_SIZES: List[List[int]] = [
 [1,5,9,13,16,20,24,28,-1,-5,-9,-13,-16,-20,-24,-28],
 [2,6,11,15,20,24,29,33,-2,-6,-11,-15,-20,-24,-29,-33],
 [2,7,13,18,23,28,34,39,-2,-7,-13,-18,-23,-28,-34,-39],
@@ -39,8 +41,8 @@ STEP_SIZES = [
 ]
 
 
-def compute_next_step_table():
-    next_step = [[0]*16 for _ in range(32)]
+def compute_next_step_table() -> List[List[int]]:
+    next_step: List[List[int]] = [[0] * 16 for _ in range(32)]
 
     # precompute next step table
     for s in range(32):
@@ -51,7 +53,8 @@ def compute_next_step_table():
             elif ns > 31:
                 ns = 31
             next_step[s][n] = ns
-    
+
     return next_step
 
-NEXT_STEP = compute_next_step_table()
+
+NEXT_STEP: List[List[int]] = compute_next_step_table()

@@ -3,15 +3,9 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, NEXT_STEP
-from .frame import FRAME_SIZE, FRAME_SAMPLES, HEADER_SIZE
-
-
-def clamp16(x):
-    if x > 32767:
-        return 32767
-    if x < -32768:
-        return -32768
-    return x
+from .frame import FRAME_SIZE, FRAME_SAMPLES
+from .header import HEADER_SIZE, HEADER_NAME
+from .utils import clamp16
 
 
 def pack_nibbles(nibbles):
@@ -57,7 +51,7 @@ def encode_wav_to_mtaf(input_path, output_path):
     with open(output_path, "wb") as f:
 
         header = bytearray(HEADER_SIZE)
-        header[0:4] = b"MTAF"
+        header[0:4] = HEADER_NAME
 
         struct.pack_into("<I", header, 0x40, 0x44414548)
         struct.pack_into("<I", header, 0x5C, total_samples)

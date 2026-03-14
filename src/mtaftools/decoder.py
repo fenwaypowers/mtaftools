@@ -3,14 +3,9 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, STEP_INDEXES
-from .frame import FRAME_SIZE, FRAME_SAMPLES, HEADER_SIZE
-
-def clamp16(x):
-    if x > 32767:
-        return 32767
-    if x < -32768:
-        return -32768
-    return x
+from .frame import FRAME_SIZE, FRAME_SAMPLES
+from .header import HEADER_SIZE, HEADER_NAME
+from .utils import clamp16
 
 
 def decode_frame_channel(frame, ch, hist, step_index):
@@ -54,7 +49,7 @@ def decode_mtaf_to_wav(input_path, output_path):
 
         header = f.read(HEADER_SIZE)
 
-        if header[0:4] != b"MTAF":
+        if header[0:4] != HEADER_NAME:
             raise ValueError("Not an MTAF file")
 
         total_samples = struct.unpack_from("<I", header, 0x5C)[0]

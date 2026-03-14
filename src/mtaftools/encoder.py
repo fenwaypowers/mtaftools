@@ -10,14 +10,48 @@ from .utils import clamp16
 
 def pack_nibbles(nibbles):
 
-    out = bytearray(128)
+    out = bytearray(len(nibbles) // 2)
 
     j = 0
-    for i in range(0, 256, 2):
+    for i in range(0, len(nibbles), 2):
         out[j] = nibbles[i] | (nibbles[i + 1] << 4)
         j += 1
 
     return out
+
+
+def encode_channel_frame(samples, hist, step, step_sizes):
+
+    nibbles = [0] * FRAME_SAMPLES
+
+    for i in range(FRAME_SAMPLES):
+
+        sample = samples[i]
+        sizes = step_sizes[step]
+
+        best_n = 0
+        best_err = 1 << 60
+        best_hist = hist
+
+        start = 0 if sample >= hist else 8
+        end = start + 8
+
+        for n in range(start, end):
+
+            pred = clamp16(hist + sizes[n])
+            err = abs(sample - pred)
+
+            if err < best_err:
+                best_err = err
+                best_n = n
+                best_hist = pred
+
+        hist = best_hist
+        step = NEXT_STEP[step][best_n]
+
+        nibbles[i] = best_n
+
+    return nibbles, hist, step
 
 
 def encode_wav_to_mtaf(input_path, output_path):

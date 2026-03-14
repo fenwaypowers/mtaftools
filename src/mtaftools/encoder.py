@@ -3,7 +3,7 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, NEXT_STEP
-from .frame import FRAME_SIZE, FRAME_SAMPLES
+from .frame import FRAME_SIZE, FRAME_SAMPLES, HEADER_SIZE
 
 
 def clamp16(x):
@@ -56,7 +56,7 @@ def encode_wav_to_mtaf(input_path, output_path):
 
     with open(output_path, "wb") as f:
 
-        header = bytearray(0x800)
+        header = bytearray(HEADER_SIZE)
         header[0:4] = b"MTAF"
 
         struct.pack_into("<I", header, 0x40, 0x44414548)

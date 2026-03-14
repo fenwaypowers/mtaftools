@@ -3,9 +3,7 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, STEP_INDEXES
-from .frame import FRAME_SIZE, FRAME_SAMPLES
-
-HEADER_SIZE = 0x800
+from .frame import FRAME_SIZE, FRAME_SAMPLES, HEADER_SIZE
 
 def clamp16(x):
     if x > 32767:

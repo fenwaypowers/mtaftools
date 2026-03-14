@@ -13,7 +13,7 @@ def clamp16(x):
         return -32768
     return x
 
-# pack nibbles
+
 def pack_nibbles(nibbles):
 
     out = bytearray(128)

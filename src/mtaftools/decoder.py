@@ -3,12 +3,9 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, STEP_INDEXES
+from .frame import FRAME_SIZE, FRAME_SAMPLES
 
-
-FRAME_SIZE = 0x110
 HEADER_SIZE = 0x800
-SAMPLES_PER_FRAME = 256
-
 
 def clamp16(x):
     if x > 32767:
@@ -27,7 +24,7 @@ def decode_frame_channel(frame, ch, hist, step_index):
 
     nibble_data = frame[0x10 + 0x80 * ch : 0x10 + 0x80 * (ch + 1)]
 
-    for i in range(SAMPLES_PER_FRAME):
+    for i in range(FRAME_SAMPLES):
 
         nibbles = nibble_data[i // 2]
 
@@ -64,7 +61,7 @@ def decode_mtaf_to_wav(input_path, output_path):
 
         total_samples = struct.unpack_from("<I", header, 0x5C)[0]
 
-        frames = (total_samples + SAMPLES_PER_FRAME - 1) // SAMPLES_PER_FRAME
+        frames = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
         left_out = []
         right_out = []

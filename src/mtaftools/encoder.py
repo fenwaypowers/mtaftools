@@ -3,10 +3,7 @@ import wave
 from pathlib import Path
 
 from .tables import STEP_SIZES, NEXT_STEP
-
-
-FRAME_SAMPLES = 256
-FRAME_SIZE = 0x110
+from .frame import FRAME_SIZE, FRAME_SAMPLES
 
 
 def clamp16(x):
@@ -37,7 +34,7 @@ def encode_wav_to_mtaf(input_path, output_path):
     w = wave.open(str(input_path), "rb")
 
     if w.getnchannels() != 2:
-        raise ValueError("MTAF encoder supports stereo only")
+        raise ValueError("MTAF encoder supports 2 channel layout only")
 
     if w.getframerate() != 48000:
         raise ValueError("MTAF requires 48kHz input")

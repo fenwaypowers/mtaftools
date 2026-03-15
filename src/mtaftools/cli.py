@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from typing import Optional
 
 from .encoder import encode_wav_to_mtaf
 from .decoder import decode_mtaf_to_wav
@@ -12,7 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     Returns:
         argparse.ArgumentParser: The configured argument parser.
     """
-    
+
     parser = argparse.ArgumentParser(
         prog="mtaftools",
         description="Encode/decode MTAF audio"

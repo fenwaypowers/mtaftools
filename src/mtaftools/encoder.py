@@ -199,6 +199,7 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
 
         pos: int = 0
         step_sizes: List[List[int]] = STEP_SIZES
+        
 
         for frame_index in range(frames):
 
@@ -213,9 +214,15 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
 
             framebuf: bytearray = bytearray(FRAME_SIZE)
 
+            # cumulative sample index
+            sample_pos = (frame_index + 1) * FRAME_SAMPLES
+            struct.pack_into("<I", framebuf, 0, sample_pos)
+
+            # step indexes
             struct.pack_into("<h", framebuf, 4, step_l)
             struct.pack_into("<h", framebuf, 6, step_r)
 
+            # predictors
             struct.pack_into("<h", framebuf, 8, hist_l)
             struct.pack_into("<h", framebuf, 12, hist_r)
 

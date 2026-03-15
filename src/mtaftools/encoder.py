@@ -16,7 +16,8 @@ TRKP_TEMPLATE = bytes([
     # TRKP header
     0x54,0x52,0x4B,0x50, 0x68,0x00,0x00,0x00,
 
-    # unknown
+    # my best guess for what these 4 bytes do:
+    # all 0's if the TRKP channel is used, 0xff if unused
     0x00,0x00,0x00,0x00,
 
     # vol L/R + pan
@@ -154,7 +155,7 @@ def encode_channel_frame(
     return nibbles, hist, step
 
 
-def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
+def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_samples: int = 0) -> None:
     """
     Encode a stereo 48kHz 16-bit WAV file into MTAF format.
     
@@ -173,7 +174,9 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
 
     w = wave.open(str(input_path), "rb")
 
-    total_samples: int = w.getnframes()
+    # turn this into a one line statemtn
+    if total_samples == 0:
+        total_samples = w.getnframes()
 
     pcm = struct.unpack(
         "<" + str(total_samples * 2) + "h",
@@ -298,8 +301,13 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
         offset = 0xF8
         size = len(TRKP_TEMPLATE)
 
-        for _ in range(16):
-            header[offset:offset+size] = TRKP_TEMPLATE
+        for i in range(16):
+            block = bytearray(TRKP_TEMPLATE)
+
+            if i >= 2:
+                block[8:12] = b'\xFF\xFF\xFF\xFF'
+
+            header[offset:offset+size] = block
             offset += size
 
         # write header

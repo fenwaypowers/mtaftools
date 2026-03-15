@@ -3,7 +3,7 @@ import wave
 from pathlib import Path
 from typing import List, Tuple
 
-from .types import PathType
+from .custom_types import PathType
 from .tables import STEP_SIZES, STEP_INDEXES
 from .frame import FRAME_SIZE, FRAME_SAMPLES
 from .header import HEADER_SIZE, HEADER_NAME

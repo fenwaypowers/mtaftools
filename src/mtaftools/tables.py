@@ -41,17 +41,42 @@ STEP_SIZES: List[List[int]] = [
 ]
 
 
+from typing import List
+
+
 def compute_next_step_table() -> List[List[int]]:
+    """
+    Precompute the next ADPCM step index for all possible inputs.
+
+    For each current step index (0–31) and encoded nibble value (0–15),
+    this function calculates the next step index using STEP_INDEXES.
+
+    The resulting table allows the encoder/decoder to avoid recalculating
+    step index updates during decoding.
+
+    Returns:
+        List[List[int]]: A 32x16 table where next_step[s][n] gives the
+        next step index for current step index `s` and nibble `n`.
+        Values are clamped to the valid range [0, 31].
+    """
+
+    # Allocate a 32x16 lookup table
     next_step: List[List[int]] = [[0] * 16 for _ in range(32)]
 
-    # precompute next step table
-    for s in range(32):
-        for n in range(16):
+    # Compute the next step index for every possible combination
+    for s in range(32):       # current step index
+        for n in range(16):   # encoded nibble (4-bit value)
+
+            # Apply the step index adjustment for this nibble
             ns = s + STEP_INDEXES[n]
+
+            # Clamp to valid step index range
             if ns < 0:
                 ns = 0
             elif ns > 31:
                 ns = 31
+
+            # Store the result in the lookup table
             next_step[s][n] = ns
 
     return next_step

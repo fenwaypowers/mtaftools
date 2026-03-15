@@ -7,6 +7,12 @@ from .decoder import decode_mtaf_to_wav
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """
+    Build the argument parser for the mtaftools CLI.
+    Returns:
+        argparse.ArgumentParser: The configured argument parser.
+    """
+    
     parser = argparse.ArgumentParser(
         prog="mtaftools",
         description="Encode/decode MTAF audio"
@@ -27,6 +33,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """
+    Main entry point for the mtaftools CLI.
+    """
+
     parser: argparse.ArgumentParser = build_parser()
     args: argparse.Namespace = parser.parse_args()
 

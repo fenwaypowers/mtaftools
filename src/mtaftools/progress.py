@@ -2,6 +2,10 @@ import time
 
 
 class Progress:
+    """
+    Simple progress tracker for encoding/decoding.
+    Displays percentage, elapsed time, and processing speed.
+    """
 
     def __init__(
         self,
@@ -17,6 +21,12 @@ class Progress:
         self.last_update: float = self.start_time
 
     def update(self, processed_samples: int) -> None:
+        """
+        Update the progress display based on the number of processed samples.
+        
+        Args:
+            processed_samples (int): The total number of audio samples processed so far.
+        """
 
         now: float = time.time()
 
@@ -40,6 +50,9 @@ class Progress:
         self.last_update = now
 
     def finish(self) -> None:
+        """
+        Finalize the progress display when processing is complete.
+        """
 
         elapsed: float = time.time() - self.start_time
         audio_seconds: float = self.total_samples / self.sample_rate

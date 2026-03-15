@@ -6,10 +6,16 @@ from .types import PathType
 
 
 class WavFormatError(Exception):
+    """
+    Exception raised when a WAV file does not meet the required format for MTAF encoding.
+    """
     pass
 
 
 class WavInfo(TypedDict):
+    """
+    A TypedDict representing the basic format information of a WAV file.
+    """
     channels: int
     samplerate: int
     bitdepth: int
@@ -19,6 +25,11 @@ class WavInfo(TypedDict):
 def describe_wav(path: PathType) -> WavInfo:
     """
     Return basic WAV format information.
+    
+    Args:
+        path (PathType): The path to the WAV file.
+    Returns:
+        WavInfo: A dictionary containing the WAV format information.
     """
 
     with wave.open(str(path), "rb") as w:
@@ -56,6 +67,15 @@ def validate_wav_for_mtaf(path: PathType) -> WavInfo:
 
 
 def format_error_message(path: PathType, info: WavInfo, errors: List[str]) -> str:
+    """
+    Format a detailed error message for an invalid WAV file.
+    Args:
+        path (PathType): The path to the WAV file.
+        info (WavInfo): The detected WAV format information.
+        errors (List[str]): A list of specific problems found with the WAV file.
+    Returns:
+        str: A formatted error message.
+    """
 
     msg: List[str] = []
     msg.append("Invalid WAV format detected.\n")

@@ -7,7 +7,7 @@ python -m pip install pyinstaller
 Then, run:
 
 ```bash
-pyinstaller --onefile -n sdttools src/sdttools/__main__.py
+pyinstaller --onefile -n mtaftools src/mtaftools/__main__.py
 ```
 
 The binary should be in the `dist` folder.

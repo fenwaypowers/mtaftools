@@ -62,7 +62,7 @@ def main() -> None:
         else:
             output = input_path.with_suffix(".mtaf")
 
-        encode_wav_to_mtaf(input_path, output)
+        encode_wav_to_mtaf(input_path, output, total_samples=8626217)
 
         print(f"Encoded: {output}")
 

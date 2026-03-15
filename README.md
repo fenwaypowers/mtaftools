@@ -78,7 +78,7 @@ Copyright (c) 2008-2025 Adam Gashlin, Fastelbja, Ronny Elfert,
 bnnm, Christopher Snowhill, NicknineTheEagle, bxaimc,
 Thealexbarney, CyberBotX, et al
 
-Used under the ISC-style license included here.
+Used under the ISC-style license included [here](https://github.com/fenwaypowers/mtaftools/blob/main/licenses/vgmstream_LICENSE).
 
 The MTAF ADPCM step tables and decoding behavior were derived
 from the [vgmstream implementation](https://github.com/vgmstream/vgmstream/blob/master/src/coding/mtaf_decoder.c).

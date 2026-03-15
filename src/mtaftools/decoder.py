@@ -20,43 +20,41 @@ def decode_frame_channel(
     """
     Decode one channel of a frame using the MTAF ADPCM algorithm.
 
-    The encoded nibble stream represents quantized differences that
-    update the predictor (hist) using the current step index.
+    Each sample is reconstructed from a 4-bit nibble that represents a
+    quantized difference from the previous predictor value (hist).
+    The difference is determined using the current ADPCM step index.
 
     Args:
-        frame (bytes): Raw frame data.
-        ch (int): Channel index (0 = left, 1 = right).
-        hist (int): Initial predictor value for this channel.
+        frame (bytes): Raw frame data containing channel ADPCM data.
+        ch (int): Channel index within the frame (0 = first, 1 = second).
+        hist (int): Initial predictor value (previous decoded sample).
         step_index (int): Initial ADPCM step index.
 
     Returns:
-        Tuple[List[int], int, int]:
-            Decoded PCM samples,
-            final predictor value,
-            final step index.
+        Tuple[List[int], int, int]: Decoded PCM samples for this channel, final predictor value, and final step index.
     """
 
     samples: List[int] = []
 
-    # Extract nibble data for this channel
-    nibble_data: bytes = frame[0x10 + 0x80 * ch : 0x10 + 0x80 * (ch + 1)]
+    # Extract the 0x80-byte nibble block for this channel
+    nibble_data = frame[0x10 + 0x80 * ch : 0x10 + 0x80 * (ch + 1)]
 
     for i in range(FRAME_SAMPLES):
 
-        # Each byte contains two 4-bit samples
-        nibbles: int = nibble_data[i // 2]
+        # Each byte stores two 4-bit samples
+        nibbles = nibble_data[i // 2]
 
         if i & 1:
-            nibble: int = (nibbles >> 4) & 0xF
+            nibble = (nibbles >> 4) & 0xF
         else:
-            nibble: int = nibbles & 0xF
+            nibble = nibbles & 0xF
 
-        # Update predictor using step size table
+        # Apply ADPCM predictor update
         hist = clamp16(hist + STEP_SIZES[step_index][nibble])
 
         samples.append(hist)
 
-        # Update step index based on nibble
+        # Update step index using the nibble's step delta
         step_index += STEP_INDEXES[nibble]
 
         # Clamp step index to valid range
@@ -70,15 +68,19 @@ def decode_frame_channel(
 
 def decode_mtaf_to_wav(input_path: PathType, output_path: PathType) -> None:
     """
-    Decode an MTAF file into a stereo WAV file.
+    Decode an MTAF audio file into a WAV file.
 
-    The decoder reads frames sequentially, reconstructs PCM samples
-    using the ADPCM predictor algorithm, then writes the result
-    as 48kHz 16-bit stereo PCM.
+    The decoder reads ADPCM frames sequentially, reconstructs PCM samples
+    using the MTAF predictor algorithm, and writes the result as
+    48 kHz 16-bit PCM audio.
+
+    MTAF stores audio as multiple stereo tracks (2 channels per track).
+    The total number of channels is determined by the track count stored
+    in the file header.
 
     Args:
-        input_path (PathType): Input MTAF file.
-        output_path (PathType): Output WAV file.
+        input_path (PathType): Path to the input MTAF file.
+        output_path (PathType): Path to the output WAV file.
     """
 
     input_path = Path(input_path)
@@ -87,91 +89,96 @@ def decode_mtaf_to_wav(input_path: PathType, output_path: PathType) -> None:
     with open(input_path, "rb") as f:
 
         # Read and validate file header
-        header: bytes = f.read(HEADER_SIZE)
+        header = f.read(HEADER_SIZE)
 
         if header[0:4] != HEADER_NAME:
             raise ValueError("Not an MTAF file")
 
-        # Total number of samples stored in file
-        total_samples: int = struct.unpack_from("<I", header, 0x5C)[0]
+        # Total number of PCM samples per channel
+        total_samples = struct.unpack_from("<I", header, 0x5C)[0]
 
-        # Calculate number of frames
-        frames: int = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
+        # Number of stereo tracks stored in the file
+        tracks = header[0x61]
+
+        if tracks <= 0:
+            tracks = 1
+
+        channels = tracks * 2
+
+        # Calculate number of ADPCM frames
+        frames = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
         progress = Progress(total_samples)
 
-        left_out: List[int] = []
-        right_out: List[int] = []
+        # Output buffers for each channel
+        outputs: List[List[int]] = [[] for _ in range(channels)]
 
-        # ADPCM state for both channels
-        hist_l: int = 0
-        hist_r: int = 0
-        step_l: int = 0
-        step_r: int = 0
+        # ADPCM predictor state for each channel
+        hist: List[int] = [0] * channels
+        step: List[int] = [0] * channels
 
         for frame_index in range(frames):
 
-            frame: bytes = f.read(FRAME_SIZE)
+            # Each frame group contains one frame per stereo track
+            for t in range(tracks):
 
-            if len(frame) < FRAME_SIZE:
-                break
+                frame = f.read(FRAME_SIZE)
 
-            # Read frame predictor/step values
-            step_l = struct.unpack_from("<h", frame, 0x04)[0]
-            step_r = struct.unpack_from("<h", frame, 0x06)[0]
+                if len(frame) < FRAME_SIZE:
+                    break
 
-            hist_l = struct.unpack_from("<h", frame, 0x08)[0]
-            hist_r = struct.unpack_from("<h", frame, 0x0C)[0]
+                # Channel indices for this track
+                ch_l = t * 2
+                ch_r = ch_l + 1
 
-            # Clamp step indices (safety against malformed files)
-            if step_l < 0:
-                step_l = 0
-            elif step_l > 31:
-                step_l = 31
+                # Read predictor and step values from frame header
+                step[ch_l] = struct.unpack_from("<h", frame, 0x04)[0]
+                step[ch_r] = struct.unpack_from("<h", frame, 0x06)[0]
 
-            if step_r < 0:
-                step_r = 0
-            elif step_r > 31:
-                step_r = 31
+                hist[ch_l] = struct.unpack_from("<h", frame, 0x08)[0]
+                hist[ch_r] = struct.unpack_from("<h", frame, 0x0C)[0]
 
-            # Decode both channels
-            l, hist_l, step_l = decode_frame_channel(frame, 0, hist_l, step_l)
-            r, hist_r, step_r = decode_frame_channel(frame, 1, hist_r, step_r)
+                # Clamp step indices for safety
+                step[ch_l] = max(0, min(31, step[ch_l]))
+                step[ch_r] = max(0, min(31, step[ch_r]))
 
-            left_out.extend(l)
-            right_out.extend(r)
+                # Decode both channels of the frame
+                l, hist[ch_l], step[ch_l] = decode_frame_channel(
+                    frame, 0, hist[ch_l], step[ch_l]
+                )
 
-            # Update progress display
-            processed_samples: int = min(
-                (frame_index + 1) * FRAME_SAMPLES,
-                total_samples
-            )
+                r, hist[ch_r], step[ch_r] = decode_frame_channel(
+                    frame, 1, hist[ch_r], step[ch_r]
+                )
 
-            progress.update(processed_samples)
+                outputs[ch_l].extend(l)
+                outputs[ch_r].extend(r)
+
+            # Update progress indicator
+            processed = min((frame_index + 1) * FRAME_SAMPLES, total_samples)
+            progress.update(processed)
 
         progress.finish()
 
-        # Remove padding samples from final frame
-        left_out = left_out[:total_samples]
-        right_out = right_out[:total_samples]
+        # Remove padding samples from the final frame
+        for ch in range(channels):
+            outputs[ch] = outputs[ch][:total_samples]
 
-        # Interleave stereo samples
+        # Interleave samples for WAV output
         interleaved: List[int] = []
 
-        for l, r in zip(left_out, right_out):
-            interleaved.append(l)
-            interleaved.append(r)
+        for i in range(total_samples):
+            for ch in range(channels):
+                interleaved.append(outputs[ch][i])
 
-        pcm: bytes = struct.pack(
-            "<" + str(len(interleaved)) + "h",
-            *interleaved
-        )
+        # Pack samples into 16-bit PCM
+        pcm = struct.pack("<" + str(len(interleaved)) + "h", *interleaved)
 
-    # Write WAV file
+    # Write decoded audio to WAV file
     with wave.open(str(output_path), "wb") as w:
 
-        w.setnchannels(2)
-        w.setsampwidth(2)
+        w.setnchannels(channels)
+        w.setsampwidth(2)  # 16-bit samples
         w.setframerate(48000)
 
         w.writeframes(pcm)

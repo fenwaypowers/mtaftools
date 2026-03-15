@@ -9,6 +9,7 @@ class WavFormatError(Exception):
     """
     Exception raised when a WAV file does not meet the required format for MTAF encoding.
     """
+
     pass
 
 
@@ -16,6 +17,7 @@ class WavInfo(TypedDict):
     """
     A TypedDict representing the basic format information of a WAV file.
     """
+
     channels: int
     samplerate: int
     bitdepth: int
@@ -25,7 +27,7 @@ class WavInfo(TypedDict):
 def describe_wav(path: PathType) -> WavInfo:
     """
     Return basic WAV format information.
-    
+
     Args:
         path (PathType): The path to the WAV file.
     Returns:
@@ -98,8 +100,6 @@ def format_error_message(path: PathType, info: WavInfo, errors: List[str]) -> st
 
     msg.append("")
     msg.append("Convert using ffmpeg:")
-    msg.append(
-        f"  ffmpeg -i \"{path}\" -ar 48000 -c:a pcm_s16le converted.wav"
-    )
+    msg.append(f'  ffmpeg -i "{path}" -ar 48000 -c:a pcm_s16le converted.wav')
 
     return "\n".join(msg)

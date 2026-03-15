@@ -3,56 +3,13 @@ import wave
 from pathlib import Path
 from typing import List, Tuple
 
-from .types import PathType
+from .custom_types import PathType
 from .tables import STEP_SIZES, NEXT_STEP
 from .frame import FRAME_SIZE, FRAME_SAMPLES
-from .header import HEADER_SIZE, HEADER_NAME
+from .header import HEADER_SIZE, HEADER_NAME, TRKP_TEMPLATE
 from .utils import clamp16
 from .progress import Progress
 from .wavcheck import validate_wav_for_mtaf
-
-
-TRKP_TEMPLATE = bytes([
-    # TRKP header
-    0x54,0x52,0x4B,0x50, 0x68,0x00,0x00,0x00,
-
-    # my best guess for what these 4 bytes do:
-    # all 0's if the TRKP channel is used, 0xff if unused
-    0x00,0x00,0x00,0x00,
-
-    # vol L/R + pan
-    0x7F,0x7F,0x40,0x00,
-
-    # padding
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,
-
-    # volume ramp table
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-    0x7F,0x00,0x7F,0x00,
-
-    # FF tail
-    0xFF,0xFF,0xFF,0xFF,
-    0xFF,0xFF,0xFF,0xFF,
-    0xFF,0xFF,0xFF,0xFF,
-    0xFF,0xFF,0xFF,0xFF,
-])
 
 
 def pack_nibbles(nibbles: List[int]) -> bytearray:
@@ -155,10 +112,12 @@ def encode_channel_frame(
     return nibbles, hist, step
 
 
-def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_samples: int = 0) -> None:
+def encode_wav_to_mtaf(
+    input_path: PathType, output_path: PathType, total_samples: int = 0
+) -> None:
     """
     Encode a stereo 48kHz 16-bit WAV file into MTAF format.
-    
+
     The audio is split into frames. Each frame encodes a fixed number
     of samples per channel using the ADPCM predictor algorithm.
 
@@ -202,12 +161,11 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_sample
 
         pos: int = 0
         step_sizes: List[List[int]] = STEP_SIZES
-        
 
         for frame_index in range(frames):
 
-            l: List[int] = left[pos:pos + FRAME_SAMPLES]
-            r: List[int] = right[pos:pos + FRAME_SAMPLES]
+            l: List[int] = left[pos : pos + FRAME_SAMPLES]
+            r: List[int] = right[pos : pos + FRAME_SAMPLES]
 
             pos += FRAME_SAMPLES
 
@@ -229,13 +187,9 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_sample
             struct.pack_into("<h", framebuf, 8, hist_l)
             struct.pack_into("<h", framebuf, 12, hist_r)
 
-            ln, hist_l, step_l = encode_channel_frame(
-                l, hist_l, step_l, step_sizes
-            )
+            ln, hist_l, step_l = encode_channel_frame(l, hist_l, step_l, step_sizes)
 
-            rn, hist_r, step_r = encode_channel_frame(
-                r, hist_r, step_r, step_sizes
-            )
+            rn, hist_r, step_r = encode_channel_frame(r, hist_r, step_r, step_sizes)
 
             framebuf[0x10:0x90] = pack_nibbles(ln)
             framebuf[0x90:0x110] = pack_nibbles(rn)
@@ -243,8 +197,7 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_sample
             f.write(framebuf)
 
             processed_samples: int = min(
-                (frame_index + 1) * FRAME_SAMPLES,
-                total_samples
+                (frame_index + 1) * FRAME_SAMPLES, total_samples
             )
 
             progress.update(processed_samples)
@@ -305,14 +258,13 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType, total_sample
             block = bytearray(TRKP_TEMPLATE)
 
             if i >= 2:
-                block[8:12] = b'\xFF\xFF\xFF\xFF'
+                block[8:12] = b"\xff\xff\xff\xff"
 
-            header[offset:offset+size] = block
+            header[offset : offset + size] = block
             offset += size
 
         # write header
         f.seek(0)
         f.write(header)
-
 
     progress.finish()

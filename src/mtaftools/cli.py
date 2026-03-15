@@ -35,7 +35,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output file (optional)"
     )
 
+    parser.add_argument(
+        "-t",
+        "--total-samples",
+        type=int,
+        help="Total samples (length of audio)"
+    )
+
     return parser
+
+
+def prompt_total_samples() -> int:
+    """
+    Prompt the user for total samples in a REPL loop.
+    Pressing Enter returns 0.
+    """
+    while True:
+        user_input = input("Enter total samples (press Enter for same value as your input wav): ").strip()
+
+        if user_input == "":
+            return 0
+
+        try:
+            return int(user_input)
+        except ValueError:
+            print("Invalid number. Please enter an integer or press Enter.")
 
 
 def main() -> None:
@@ -56,13 +80,18 @@ def main() -> None:
     # WAV -> MTAF
     if ext == ".wav":
 
+        if args.total_samples is not None:
+            total_samples: int = args.total_samples
+        else:
+            total_samples = prompt_total_samples()
+
         output: Path
         if args.output:
             output = Path(args.output)
         else:
             output = input_path.with_suffix(".mtaf")
 
-        encode_wav_to_mtaf(input_path, output, total_samples=8626217)
+        encode_wav_to_mtaf(input_path, output, total_samples=total_samples)
 
         print(f"Encoded: {output}")
 

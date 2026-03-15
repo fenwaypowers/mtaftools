@@ -8,10 +8,7 @@ class Progress:
     """
 
     def __init__(
-        self,
-        total_samples: int,
-        sample_rate: int = 48000,
-        update_interval: float = 0.2
+        self, total_samples: int, sample_rate: int = 48000, update_interval: float = 0.2
     ) -> None:
         self.total_samples: int = total_samples
         self.sample_rate: int = sample_rate
@@ -23,7 +20,7 @@ class Progress:
     def update(self, processed_samples: int) -> None:
         """
         Update the progress display based on the number of processed samples.
-        
+
         Args:
             processed_samples (int): The total number of audio samples processed so far.
         """
@@ -58,6 +55,4 @@ class Progress:
         audio_seconds: float = self.total_samples / self.sample_rate
         speed: float = audio_seconds / elapsed if elapsed > 0 else 0.0
 
-        print(
-            f"100.00% | {elapsed:6.2f}s | {speed:5.2f}x"
-        )
+        print(f"100.00% | {elapsed:6.2f}s | {speed:5.2f}x")

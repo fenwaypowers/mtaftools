@@ -24,22 +24,12 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    parser.add_argument(
-        "input",
-        help="Input file (.wav or .mtaf)"
-    )
+    parser.add_argument("input", help="Input file (.wav or .mtaf)")
+
+    parser.add_argument("-o", "--output", help="Output file (optional)")
 
     parser.add_argument(
-        "-o",
-        "--output",
-        help="Output file (optional)"
-    )
-
-    parser.add_argument(
-        "-t",
-        "--total-samples",
-        type=int,
-        help="Total samples (length of audio)"
+        "-t", "--total-samples", type=int, help="Total samples (length of audio)"
     )
 
     return parser
@@ -51,7 +41,9 @@ def prompt_total_samples() -> int:
     Pressing Enter returns 0.
     """
     while True:
-        user_input = input("Enter total samples (press Enter for same value as your input wav): ").strip()
+        user_input = input(
+            "Enter total samples (press Enter for same value as your input wav): "
+        ).strip()
 
         if user_input == "":
             return 0

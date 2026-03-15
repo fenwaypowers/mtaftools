@@ -6,7 +6,7 @@ def clamp16(x: int) -> int:
     Returns:
         int: The clamped integer.
     """
-    
+
     if x > 32767:
         return 32767
     if x < -32768:

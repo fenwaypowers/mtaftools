@@ -14,7 +14,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog="mtaftools",
-        description="Encode/decode MTAF audio"
+        description=(
+            "Encode/decode MTAF audio files used in Metal Gear Solid games.\n\n"
+            "Basic usage:\n"
+            "  mtaftools input.wav -o output.mtaf    Encode WAV to MTAF\n"
+            "  mtaftools input.mtaf -o output.wav    Decode MTAF to WAV\n\n"
+            "Drag-and-drop is supported when using the executable version."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument(

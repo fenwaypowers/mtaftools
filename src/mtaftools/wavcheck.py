@@ -2,7 +2,7 @@ import wave
 from pathlib import Path
 from typing import TypedDict, List
 
-from .types import PathType
+from .custom_types import PathType
 
 
 class WavFormatError(Exception):

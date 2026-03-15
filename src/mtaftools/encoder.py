@@ -12,6 +12,48 @@ from .progress import Progress
 from .wavcheck import validate_wav_for_mtaf
 
 
+TRKP_TEMPLATE = bytes([
+    # TRKP header
+    0x54,0x52,0x4B,0x50, 0x68,0x00,0x00,0x00,
+
+    # unknown
+    0x00,0x00,0x00,0x00,
+
+    # vol L/R + pan
+    0x7F,0x7F,0x40,0x00,
+
+    # padding
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+
+    # volume ramp table
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+    0x7F,0x00,0x7F,0x00,
+
+    # FF tail
+    0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,
+])
+
+
 def pack_nibbles(nibbles: List[int]) -> bytearray:
     """
     Pack a sequence of 4-bit values into bytes.
@@ -115,7 +157,7 @@ def encode_channel_frame(
 def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
     """
     Encode a stereo 48kHz 16-bit WAV file into MTAF format.
-
+    
     The audio is split into frames. Each frame encodes a fixed number
     of samples per channel using the ADPCM predictor algorithm.
 
@@ -127,79 +169,56 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
     input_path = Path(input_path)
     output_path = Path(output_path)
 
-    # Ensure WAV format matches encoder requirements
     validate_wav_for_mtaf(input_path)
 
     w = wave.open(str(input_path), "rb")
 
     total_samples: int = w.getnframes()
 
-    # Read all PCM samples (interleaved stereo)
     pcm = struct.unpack(
         "<" + str(total_samples * 2) + "h",
         w.readframes(total_samples),
     )
 
-    # Split into left/right channels
     left: List[int] = list(pcm[0::2])
     right: List[int] = list(pcm[1::2])
 
-    # Number of frames required
     frames: int = (total_samples + FRAME_SAMPLES - 1) // FRAME_SAMPLES
 
     progress = Progress(total_samples)
 
     with open(output_path, "wb") as f:
 
-        # Create and write MTAF header
-        header: bytearray = bytearray(HEADER_SIZE)
-        header[0:4] = HEADER_NAME
+        # reserve space for header
+        f.write(bytearray(HEADER_SIZE))
 
-        # HEA D marker
-        struct.pack_into("<I", header, 0x40, 0x44414548)
-
-        # total sample count
-        struct.pack_into("<I", header, 0x5C, total_samples)
-
-        # channel mode flag
-        header[0x61] = 1
-
-        f.write(header)
-
-        # ADPCM state for each channel
         hist_l: int = 0
         hist_r: int = 0
         step_l: int = 0
         step_r: int = 0
 
         pos: int = 0
-
         step_sizes: List[List[int]] = STEP_SIZES
 
         for frame_index in range(frames):
 
-            # Extract frame samples
             l: List[int] = left[pos:pos + FRAME_SAMPLES]
             r: List[int] = right[pos:pos + FRAME_SAMPLES]
 
             pos += FRAME_SAMPLES
 
-            # Pad last frame if needed
             if len(l) < FRAME_SAMPLES:
                 l += [0] * (FRAME_SAMPLES - len(l))
                 r += [0] * (FRAME_SAMPLES - len(r))
 
             framebuf: bytearray = bytearray(FRAME_SIZE)
 
-            # Store previous step index
             struct.pack_into("<h", framebuf, 4, step_l)
             struct.pack_into("<h", framebuf, 6, step_r)
 
-            # Store predictor values
             struct.pack_into("<h", framebuf, 8, hist_l)
             struct.pack_into("<h", framebuf, 12, hist_r)
 
-            # Encode both channels
             ln, hist_l, step_l = encode_channel_frame(
                 l, hist_l, step_l, step_sizes
             )
@@ -208,18 +227,72 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
                 r, hist_r, step_r, step_sizes
             )
 
-            # Write encoded nibble streams
             framebuf[0x10:0x90] = pack_nibbles(ln)
             framebuf[0x90:0x110] = pack_nibbles(rn)
 
             f.write(framebuf)
 
-            # Update progress display
             processed_samples: int = min(
                 (frame_index + 1) * FRAME_SAMPLES,
                 total_samples
             )
 
             progress.update(processed_samples)
+
+        progress.finish()
+
+        # Build final header
+
+        data_size: int = frames * FRAME_SIZE
+        file_size: int = HEADER_SIZE + data_size
+
+        header = bytearray(HEADER_SIZE)
+
+        # MTAF
+        header[0:4] = HEADER_NAME
+
+        # pseudo file size
+        struct.pack_into("<I", header, 0x04, file_size - 8)
+
+        # HEAD
+        struct.pack_into(">I", header, 0x40, 0x48454144)
+        struct.pack_into("<I", header, 0x44, 0xB0)
+
+        # volume / pan defaults
+        struct.pack_into("<I", header, 0x50, 0x7F)
+        struct.pack_into("<H", header, 0x54, 0x40)
+
+        # loop start / end
+        struct.pack_into("<I", header, 0x58, 0)
+        struct.pack_into("<I", header, 0x5C, total_samples)
+
+        # block size (0x110 * channels)
+        struct.pack_into("<I", header, 0x60, 0x110 * 2)
+
+        # channel factor
+        header[0x61] = 1
+
+        # loop frames
+        struct.pack_into("<I", header, 0x64, 0)
+        struct.pack_into("<I", header, 0x68, total_samples // 0x100)
+
+        # loop flag
+        struct.pack_into("<I", header, 0x70, 0)
+
+        # DATA chunk
+        struct.pack_into(">I", header, 0x7F8, 0x44415441)
+        struct.pack_into("<I", header, 0x7FC, data_size)
+
+        offset = 0xF8
+        size = len(TRKP_TEMPLATE)
+
+        for _ in range(16):
+            header[offset:offset+size] = TRKP_TEMPLATE
+            offset += size
+
+        # write header
+        f.seek(0)
+        f.write(header)
+
 
     progress.finish()

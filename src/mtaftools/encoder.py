@@ -113,7 +113,10 @@ def encode_channel_frame(
 
 
 def encode_wav_to_mtaf(
-    input_path: PathType, output_path: PathType, total_samples: int = 0
+    input_path: PathType,
+    output_path: PathType,
+    loop_start: int = 0,
+    total_samples: int = 0,
 ) -> None:
     """
     Encode a stereo 48kHz 16-bit WAV file into MTAF format.
@@ -124,6 +127,8 @@ def encode_wav_to_mtaf(
     Args:
         input_path (PathType): Input WAV file.
         output_path (PathType): Output MTAF file.
+        loop_start (int): Loop start sample.
+        total_samples (int): Total samples to encode.
     """
 
     input_path = Path(input_path)
@@ -228,24 +233,45 @@ def encode_wav_to_mtaf(
         # channel configuration
         struct.pack_into("<I", header, 0x4C, 0x10)
 
-        # loop start/end
-        struct.pack_into("<I", header, 0x58, total_samples)
-        struct.pack_into("<I", header, 0x5C, total_samples)
-
         # frame size
         struct.pack_into("<I", header, 0x60, 0x110)
 
         # channel factor
         header[0x61] = 1
 
-        frames = total_samples // 0x100
+        total_frames = total_samples // FRAME_SAMPLES
 
-        # loop frame counts
-        struct.pack_into("<I", header, 0x64, frames)
-        struct.pack_into("<I", header, 0x68, frames)
+        # determine looping behavior
+        if loop_start > 0:
+
+            loop_start_samples = loop_start
+            loop_end_samples = total_samples
+
+            loop_start_frame = loop_start_samples // FRAME_SAMPLES
+            loop_end_frame = total_frames
+
+            loop_flag = 5
+
+        else:
+
+            loop_start_samples = total_samples
+            loop_end_samples = total_samples
+
+            loop_start_frame = total_frames
+            loop_end_frame = total_frames
+
+            loop_flag = 0
+
+        # write loop sample positions
+        struct.pack_into("<I", header, 0x58, loop_start_samples)
+        struct.pack_into("<I", header, 0x5C, loop_end_samples)
+
+        # write loop frame positions
+        struct.pack_into("<I", header, 0x64, loop_start_frame)
+        struct.pack_into("<I", header, 0x68, loop_end_frame)
 
         # loop flag
-        struct.pack_into("<I", header, 0x70, 0)
+        struct.pack_into("<I", header, 0x70, loop_flag)
 
         # DATA chunk
         struct.pack_into(">I", header, 0x7F8, 0x44415441)

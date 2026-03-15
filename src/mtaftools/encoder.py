@@ -262,19 +262,24 @@ def encode_wav_to_mtaf(input_path: PathType, output_path: PathType) -> None:
         struct.pack_into("<I", header, 0x50, 0x7F)
         struct.pack_into("<H", header, 0x54, 0x40)
 
-        # loop start / end
-        struct.pack_into("<I", header, 0x58, 0)
+        # channel configuration
+        struct.pack_into("<I", header, 0x4C, 0x10)
+
+        # loop start/end
+        struct.pack_into("<I", header, 0x58, total_samples)
         struct.pack_into("<I", header, 0x5C, total_samples)
 
-        # block size (0x110 * channels)
-        struct.pack_into("<I", header, 0x60, 0x110 * 2)
+        # frame size
+        struct.pack_into("<I", header, 0x60, 0x110)
 
         # channel factor
         header[0x61] = 1
 
-        # loop frames
-        struct.pack_into("<I", header, 0x64, 0)
-        struct.pack_into("<I", header, 0x68, total_samples // 0x100)
+        frames = total_samples // 0x100
+
+        # loop frame counts
+        struct.pack_into("<I", header, 0x64, frames)
+        struct.pack_into("<I", header, 0x68, frames)
 
         # loop flag
         struct.pack_into("<I", header, 0x70, 0)

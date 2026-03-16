@@ -6,7 +6,7 @@ from typing import List, Tuple
 from .custom_types import PathType
 from .tables import STEP_SIZES, NEXT_STEP
 from .frame import FRAME_SIZE, FRAME_SAMPLES
-from .header import HEADER_SIZE, HEADER_NAME, TRKP_TEMPLATE
+from .header import HEADER_SIZE, HEADER_NAME, TRKP_TEMPLATE, TRKP_LOOPING_TEMPLATE
 from .utils import clamp16
 from .progress import Progress
 from .wavcheck import validate_wav_for_mtaf
@@ -277,14 +277,21 @@ def encode_wav_to_mtaf(
         struct.pack_into(">I", header, 0x7F8, 0x44415441)
         struct.pack_into("<I", header, 0x7FC, data_size)
 
+        trkp_template_to_use = TRKP_TEMPLATE
+
+        if (loop_start != 0):
+            trkp_template_to_use = TRKP_LOOPING_TEMPLATE
+
         offset = 0xF8
-        size = len(TRKP_TEMPLATE)
+        size = len(trkp_template_to_use)
 
         for i in range(16):
-            block = bytearray(TRKP_TEMPLATE)
+            block = bytearray(trkp_template_to_use)
 
             if i >= 2:
                 block[8:12] = b"\xff\xff\xff\xff"
+                if (loop_start != 0):
+                    block[48:96] = b"\x00" * 48
 
             header[offset : offset + size] = block
             offset += size

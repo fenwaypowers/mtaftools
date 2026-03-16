@@ -67,7 +67,7 @@ from mtaftools import encode_wav_to_mtaf, decode_mtaf_to_wav
 decode_mtaf_to_wav("input.mtaf", "output.wav")
 
 # encode to mtaf
-encode_wav_to_mtaf("input.wav", "output.wav")
+encode_wav_to_mtaf("input.wav", "output.mtaf")
 ```
 
 ## Credits
